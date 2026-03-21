@@ -76,7 +76,7 @@ export async function mergePdfs(files, onProgress) {
 
     // Copy all pages from the source document into the output
     const pageIndices = srcDoc.getPageIndices();
-    const copiedPages = await mergedPdf.copyPagesFrom(srcDoc, pageIndices);
+    const copiedPages = await mergedPdf.copyPages(srcDoc, pageIndices);
     copiedPages.forEach(page => mergedPdf.addPage(page));
 
     // Progress: copying phase is 70–90 %
