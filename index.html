@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Merger – Combine PDFs Online</title>
+  <meta name="description" content="Merge multiple PDF files into one in your browser. No uploads to server, fully private and free." />
+  <link rel="stylesheet" href="src/css/styles.css" />
+  <!-- pdf-lib for PDF processing -->
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <!-- SortableJS for drag-and-drop reordering -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
+</head>
+<body class="light-mode">
+
+  <!-- ===== HEADER ===== -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="3" y="2" width="13" height="17" rx="2" stroke="currentColor" stroke-width="2"/>
+          <path d="M8 7h6M8 11h6M8 15h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M16 12v8m-3-3 3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="logo-text">PDF Merger</span>
+      </div>
+      <button id="themeToggle" class="btn btn-icon" aria-label="Toggle dark mode" title="Toggle dark/light mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="app-main">
+
+    <!-- Hero section -->
+    <section class="hero">
+      <h1>Merge PDF Files Online</h1>
+      <p class="hero-subtitle">Combine multiple PDFs into one file instantly — all processing happens in your browser. Your files never leave your device.</p>
+    </section>
+
+    <!-- Upload zone -->
+    <section class="upload-section" aria-label="File upload area">
+      <div id="dropZone" class="drop-zone" role="button" tabindex="0" aria-label="Drop PDF files here or click to browse">
+        <div class="drop-zone-icon" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none">
+            <rect x="8" y="8" width="32" height="40" rx="4" stroke="currentColor" stroke-width="3"/>
+            <rect x="16" y="16" width="32" height="40" rx="4" fill="var(--surface)" stroke="currentColor" stroke-width="3"/>
+            <path d="M28 36v-12m-4 6 4-6 4 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <p class="drop-zone-title">Drop PDF files here</p>
+        <p class="drop-zone-subtitle">or</p>
+        <label class="btn btn-primary" for="fileInput">
+          Browse Files
+          <input type="file" id="fileInput" accept=".pdf,application/pdf" multiple aria-label="Select PDF files" />
+        </label>
+        <p class="drop-zone-hint">Supports multiple PDFs · Max 100 MB per file</p>
+      </div>
+    </section>
+
+    <!-- Error / info banner -->
+    <div id="messageBanner" class="message-banner hidden" role="alert" aria-live="polite"></div>
+
+    <!-- File list section -->
+    <section id="fileListSection" class="file-list-section hidden" aria-label="Selected files">
+      <div class="file-list-header">
+        <h2>Files to Merge <span id="fileCount" class="badge">0</span></h2>
+        <div class="file-list-actions">
+          <button id="clearAllBtn" class="btn btn-ghost btn-sm" aria-label="Remove all files">Clear All</button>
+        </div>
+      </div>
+      <p class="drag-hint">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="16" height="16">
+          <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="2"/>
+          <path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        Drag to reorder files – the merged PDF will follow this order.
+      </p>
+
+      <!-- Sortable file list -->
+      <ul id="fileList" class="file-list" aria-label="File list – drag to reorder"></ul>
+
+      <!-- Progress bar -->
+      <div id="progressContainer" class="progress-container hidden" aria-live="polite">
+        <div class="progress-info">
+          <span id="progressLabel">Merging…</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Merge progress">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+      </div>
+
+      <!-- Merge button -->
+      <div class="merge-actions">
+        <button id="mergeBtn" class="btn btn-primary btn-lg" disabled>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
+            <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3M12 8v8m-3-3 3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Merge &amp; Download
+        </button>
+      </div>
+    </section>
+
+    <!-- PDF Preview Modal -->
+    <div id="previewModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="PDF preview">
+      <div class="modal-backdrop" id="modalBackdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="previewTitle">Preview</h3>
+          <button id="closePreview" class="btn btn-icon" aria-label="Close preview">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
+              <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <iframe id="previewFrame" title="PDF preview" aria-label="PDF preview"></iframe>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="app-footer">
+    <p>All processing happens in your browser – your files are never uploaded to any server.</p>
+  </footer>
+
+  <!-- Application scripts (ES modules) -->
+  <script type="module" src="src/js/main.js"></script>
+</body>
+</html>
