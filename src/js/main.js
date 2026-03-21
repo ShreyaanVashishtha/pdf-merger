@@ -77,8 +77,8 @@ dropZone.addEventListener('keydown', e => {
 });
 
 dropZone.addEventListener('click', e => {
-  // Don't trigger when clicking the label/button directly
-  if (e.target !== dropZone && !dropZone.contains(/** @type {Node} */(e.target))) return;
+  // Ignore clicks that originate from the label element (the "Browse Files"
+  // button), because the label already triggers the file input natively.
   if (/** @type {HTMLElement} */(e.target).closest('label')) return;
   fileInput.click();
 });

@@ -20,7 +20,10 @@
     X-XSS-Protection           = "1; mode=block"
     Referrer-Policy            = "strict-origin-when-cross-origin"
     Permissions-Policy         = "camera=(), microphone=(), geolocation=()"
-    # Allow pdf-lib and Sortable from CDN
+    # Allow pdf-lib and Sortable from CDN.
+    # Note: JavaScript element.style property manipulation is NOT governed by
+    # style-src (only <style> tags and style= attributes are), so the app's
+    # runtime style updates (progress bar width, overflow, etc.) are unaffected.
     Content-Security-Policy    = "default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; frame-src blob:; worker-src blob:;"
 
 # Long-cache for versioned static assets

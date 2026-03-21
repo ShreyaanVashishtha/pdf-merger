@@ -78,7 +78,7 @@ export function renderFileList(files, { onRemove, onPreview }) {
     `;
 
     // Attach event listeners
-    li.querySelector('.btn-preview').addEventListener('click', () => onPreview(entry.file));
+    li.querySelector('.btn-preview')?.addEventListener('click', () => onPreview(entry.file));
     li.querySelector('.btn-danger').addEventListener('click',  () => onRemove(entry.id));
 
     fileListEl.appendChild(li);
