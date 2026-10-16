@@ -7,7 +7,7 @@
   <meta name="description" content="Merge, split, rotate, and organize PDF files in your browser. 100% private, free, and works offline." />
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#4f46e5" />
-  <link rel="stylesheet" href="src/css/styles.css" />
+  <link rel="stylesheet" href="src/css/styles.css?v=2.2.0" />
 
   <!-- pdf-lib for PDF manipulation -->
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
@@ -113,7 +113,7 @@
         <div class="file-list-header">
           <div class="file-list-title-wrap">
             <h2>Files to Merge <span id="fileCount" class="badge">0</span></h2>
-            <div id="statsSummary" class="stats-summary" aria-live="polite">0 files · 0 pages · 0 Bytes</div>
+            <div id="statsSummary" class="stats-summary" aria-live="polite"></div>
           </div>
           
           <div class="file-list-actions">
@@ -171,8 +171,11 @@
         <!-- Merge action buttons -->
         <div class="merge-actions">
           <button id="mergeBtn" class="btn btn-primary btn-lg" disabled>
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
-              <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 2 2h3M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3M12 8v8m-3-3 3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3"/>
+              <path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/>
+              <path d="M12 7v10"/>
+              <path d="M8 13l4 4 4-4"/>
             </svg>
             Merge &amp; Download
           </button>
@@ -476,6 +479,6 @@
   </footer>
 
   <!-- Application scripts (ES modules) -->
-  <script type="module" src="src/js/main.js"></script>
+  <script type="module" src="src/js/main.js?v=2.2.0"></script>
 </body>
 </html>

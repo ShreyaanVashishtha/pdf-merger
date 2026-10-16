@@ -163,7 +163,7 @@ export async function splitPdf(file, mode, options, onProgress) {
   const results = [];
 
   if (mode === 'extract') {
-    const { parsePageRange } = await import('./pageRange.js');
+    const { parsePageRange } = await import('./pageRange.js?v=2.2.0');
     const parsed = parsePageRange(options.pageRange || 'all', totalPages);
     if (parsed.error) {
       throw new Error(parsed.error);

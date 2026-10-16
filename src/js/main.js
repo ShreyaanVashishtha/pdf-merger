@@ -9,13 +9,13 @@
  *  - PWA Service Worker & Theme toggle
  */
 
-import { createFileManager } from './fileManager.js';
+import { createFileManager } from './fileManager.js?v=2.2.0';
 import {
   mergePdfs,
   getPdfPageCount,
   splitPdf,
   rotatePdf,
-} from './pdfTools.js';
+} from './pdfTools.js?v=2.2.0';
 import {
   renderFileList,
   showMessage,
@@ -30,10 +30,10 @@ import {
   hideResultModal,
   openPageOrganizer,
   hidePageOrganizer,
-} from './ui.js';
-import { sanitiseFilename, downloadBlob } from './utils.js';
-import { parsePageRange } from './pageRange.js';
-import { renderPageThumbnail } from './thumbnailRenderer.js';
+} from './ui.js?v=2.2.0';
+import { sanitiseFilename, downloadBlob } from './utils.js?v=2.2.0';
+import { parsePageRange } from './pageRange.js?v=2.2.0';
+import { renderPageThumbnail } from './thumbnailRenderer.js?v=2.2.0';
 
 /* ── DOM References: Tabs & Global ──────────────────────────── */
 const tabMerge       = /** @type {HTMLButtonElement} */ (document.getElementById('tabMerge'));
