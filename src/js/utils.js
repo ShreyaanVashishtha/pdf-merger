@@ -57,3 +57,30 @@ export function debounce(fn, wait) {
     timer = setTimeout(() => fn(...args), wait);
   };
 }
+
+/**
+ * Triggers a client-side file download for a Blob.
+ * @param {Blob} blob
+ * @param {string} filename
+ */
+export function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = sanitiseFilename(filename);
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/**
+ * Clamps a number between a minimum and maximum.
+ * @param {number} num
+ * @param {number} min
+ * @param {number} max
+ * @returns {number}
+ */
+export function clamp(num, min, max) {
+  return Math.min(Math.max(num, min), max);
+}

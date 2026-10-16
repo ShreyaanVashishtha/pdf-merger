@@ -3,13 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PDF Merger – Combine PDFs Online</title>
-  <meta name="description" content="Merge multiple PDF files into one in your browser. No uploads to server, fully private and free." />
+  <title>PDF Merger &amp; Toolbox – Combine, Split &amp; Rotate PDFs Online</title>
+  <meta name="description" content="Merge, split, rotate, and organize PDF files in your browser. 100% private, free, and works offline." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#4f46e5" />
   <link rel="stylesheet" href="src/css/styles.css" />
-  <!-- pdf-lib for PDF processing -->
+
+  <!-- pdf-lib for PDF manipulation -->
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <!-- SortableJS for drag-and-drop reordering -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
+  <!-- PDF.js for rendering crisp page thumbnails -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body class="light-mode">
 
@@ -22,98 +27,389 @@
           <path d="M8 7h6M8 11h6M8 15h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           <path d="M16 12v8m-3-3 3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <span class="logo-text">PDF Merger</span>
+        <span class="logo-text">PDF Toolbox</span>
       </div>
-      <button id="themeToggle" class="btn btn-icon" aria-label="Toggle dark mode" title="Toggle dark/light mode">
-        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/>
-          <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
+
+      <!-- Mode Navigation Tabs -->
+      <nav class="app-tabs" role="tablist" aria-label="PDF Tools">
+        <button id="tabMerge" class="tab-btn active" role="tab" aria-selected="true" aria-controls="panelMerge">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3M12 8v8m-3-3 3 3 3-3"/>
+          </svg>
+          Merge PDF
+        </button>
+        <button id="tabSplit" class="tab-btn" role="tab" aria-selected="false" aria-controls="panelSplit">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2">
+            <circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>
+          </svg>
+          Split PDF
+        </button>
+        <button id="tabRotate" class="tab-btn" role="tab" aria-selected="false" aria-controls="panelRotate">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-1.19"/>
+          </svg>
+          Rotate PDF
+        </button>
+      </nav>
+
+      <div class="header-actions">
+        <span id="offlineBadge" class="status-pill" title="Works completely offline in your browser">
+          <span class="status-dot"></span> Offline Ready
+        </span>
+        <button id="themeToggle" class="btn btn-icon" aria-label="Toggle dark mode" title="Toggle dark/light mode">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </header>
 
   <!-- ===== MAIN CONTENT ===== -->
   <main class="app-main">
 
-    <!-- Hero section -->
-    <section class="hero">
-      <h1>Merge PDF Files Online</h1>
-      <p class="hero-subtitle">Combine multiple PDFs into one file instantly — all processing happens in your browser. Your files never leave your device.</p>
-    </section>
-
-    <!-- Upload zone -->
-    <section class="upload-section" aria-label="File upload area">
-      <div id="dropZone" class="drop-zone" role="button" tabindex="0" aria-label="Drop PDF files here or click to browse">
-        <div class="drop-zone-icon" aria-hidden="true">
-          <svg viewBox="0 0 64 64" fill="none">
-            <rect x="8" y="8" width="32" height="40" rx="4" stroke="currentColor" stroke-width="3"/>
-            <rect x="16" y="16" width="32" height="40" rx="4" fill="var(--surface)" stroke="currentColor" stroke-width="3"/>
-            <path d="M28 36v-12m-4 6 4-6 4 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <p class="drop-zone-title">Drop PDF files here</p>
-        <p class="drop-zone-subtitle">or</p>
-        <label class="btn btn-primary" for="fileInput">
-          Browse Files
-          <input type="file" id="fileInput" accept=".pdf,application/pdf" multiple aria-label="Select PDF files" />
-        </label>
-        <p class="drop-zone-hint">Supports multiple PDFs · Max 100 MB per file</p>
-      </div>
-    </section>
-
-    <!-- Error / info banner -->
+    <!-- Global Error / Info Banner -->
     <div id="messageBanner" class="message-banner hidden" role="alert" aria-live="polite"></div>
 
-    <!-- File list section -->
-    <section id="fileListSection" class="file-list-section hidden" aria-label="Selected files">
-      <div class="file-list-header">
-        <h2>Files to Merge <span id="fileCount" class="badge">0</span></h2>
-        <div class="file-list-actions">
-          <button id="clearAllBtn" class="btn btn-ghost btn-sm" aria-label="Remove all files">Clear All</button>
-        </div>
-      </div>
-      <p class="drag-hint">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="16" height="16">
-          <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="2"/>
-          <path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        Drag to reorder files – the merged PDF will follow this order.
-      </p>
+    <!-- ======================================================== -->
+    <!-- PANEL 1: MERGE PDF                                       -->
+    <!-- ======================================================== -->
+    <div id="panelMerge" class="tab-panel active" role="tabpanel" aria-labelledby="tabMerge">
+      
+      <!-- Hero section -->
+      <section class="hero">
+        <h1>Merge PDF Files Online</h1>
+        <p class="hero-subtitle">Combine multiple PDFs into one document with full page range selection, rotation, and drag-and-drop reordering. 100% private in your browser.</p>
+      </section>
 
-      <!-- Sortable file list -->
-      <ul id="fileList" class="file-list" aria-label="File list – drag to reorder"></ul>
-
-      <!-- Progress bar -->
-      <div id="progressContainer" class="progress-container hidden" aria-live="polite">
-        <div class="progress-info">
-          <span id="progressLabel">Merging…</span>
-          <span id="progressPercent">0%</span>
+      <!-- Upload zone -->
+      <section class="upload-section" aria-label="File upload area">
+        <div id="dropZone" class="drop-zone" role="button" tabindex="0" aria-label="Drop PDF files here or click to browse">
+          <div class="drop-zone-icon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none">
+              <rect x="8" y="8" width="32" height="40" rx="4" stroke="currentColor" stroke-width="3"/>
+              <rect x="16" y="16" width="32" height="40" rx="4" fill="var(--surface)" stroke="currentColor" stroke-width="3"/>
+              <path d="M28 36v-12m-4 6 4-6 4 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <p class="drop-zone-title">Drop PDF files here</p>
+          <p class="drop-zone-subtitle">or</p>
+          <label class="btn btn-primary" for="fileInput">
+            Browse Files
+            <input type="file" id="fileInput" accept=".pdf,application/pdf" multiple aria-label="Select PDF files" />
+          </label>
+          <p class="drop-zone-hint">Supports multiple PDFs · Max 100 MB per file</p>
         </div>
-        <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Merge progress">
-          <div id="progressFill" class="progress-fill"></div>
-        </div>
-      </div>
+      </section>
 
-      <!-- Merge button -->
-      <div class="merge-actions">
-        <button id="mergeBtn" class="btn btn-primary btn-lg" disabled>
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
-            <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3M12 8v8m-3-3 3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- File list section -->
+      <section id="fileListSection" class="file-list-section hidden" aria-label="Selected files">
+        
+        <!-- Section Header with Quick Sorting Toolbar -->
+        <div class="file-list-header">
+          <div class="file-list-title-wrap">
+            <h2>Files to Merge <span id="fileCount" class="badge">0</span></h2>
+            <div id="statsSummary" class="stats-summary" aria-live="polite">0 files · 0 pages · 0 Bytes</div>
+          </div>
+          
+          <div class="file-list-actions">
+            <div class="sort-toolbar" role="group" aria-label="Sort options">
+              <span class="sort-label">Sort:</span>
+              <button id="sortAzBtn" class="btn btn-ghost btn-xs" title="Sort alphabetically A to Z">A→Z</button>
+              <button id="sortZaBtn" class="btn btn-ghost btn-xs" title="Sort alphabetically Z to A">Z→A</button>
+              <button id="sortSizeBtn" class="btn btn-ghost btn-xs" title="Sort by file size">Size</button>
+              <button id="reverseBtn" class="btn btn-ghost btn-xs" title="Reverse current order">Reverse</button>
+            </div>
+            <button id="openAllOrganizerBtn" class="btn btn-secondary btn-sm" title="Open visual page organizer for all files">
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              Organize Pages
+            </button>
+            <button id="clearAllBtn" class="btn btn-ghost btn-sm text-danger" aria-label="Remove all files">Clear All</button>
+          </div>
+        </div>
+
+        <p class="drag-hint">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="16" height="16">
+            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="2"/>
+            <path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
-          Merge &amp; Download
-        </button>
-      </div>
-    </section>
+          Drag items or use the ▲▼ buttons to reorder. Set custom page ranges (e.g. <code>1-3, 5</code>) or rotate documents.
+        </p>
 
-    <!-- PDF Preview Modal -->
+        <!-- Sortable file list -->
+        <ul id="fileList" class="file-list" aria-label="File list – drag to reorder"></ul>
+
+        <!-- Output Settings Card -->
+        <div class="output-settings-card">
+          <div class="output-row">
+            <label for="outputFilename" class="output-label">Output Filename:</label>
+            <div class="filename-input-group">
+              <input type="text" id="outputFilename" class="input-text" value="merged-document" placeholder="Enter output filename" aria-label="Merged PDF filename" />
+              <span class="filename-ext">.pdf</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div id="progressContainer" class="progress-container hidden" aria-live="polite">
+          <div class="progress-info">
+            <span id="progressLabel">Merging…</span>
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Merge progress">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+        </div>
+
+        <!-- Merge action buttons -->
+        <div class="merge-actions">
+          <button id="mergeBtn" class="btn btn-primary btn-lg" disabled>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
+              <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 2 2h3M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3M12 8v8m-3-3 3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Merge &amp; Download
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- PANEL 2: SPLIT PDF                                       -->
+    <!-- ======================================================== -->
+    <div id="panelSplit" class="tab-panel hidden" role="tabpanel" aria-labelledby="tabSplit">
+      <section class="hero">
+        <h1>Split PDF Online</h1>
+        <p class="hero-subtitle">Extract specific page ranges, divide a document into single-page PDFs, or split by page intervals instantly.</p>
+      </section>
+
+      <!-- Split Upload Zone -->
+      <section class="upload-section">
+        <div id="splitDropZone" class="drop-zone" role="button" tabindex="0" aria-label="Drop a PDF file to split">
+          <div class="drop-zone-icon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none">
+              <rect x="8" y="8" width="48" height="48" rx="4" stroke="currentColor" stroke-width="3"/>
+              <line x1="32" y1="8" x2="32" y2="56" stroke="currentColor" stroke-width="2.5" stroke-dasharray="4 4"/>
+              <circle cx="24" cy="32" r="3" fill="currentColor"/>
+              <circle cx="40" cy="32" r="3" fill="currentColor"/>
+            </svg>
+          </div>
+          <p class="drop-zone-title">Drop a PDF file here to split</p>
+          <p class="drop-zone-subtitle">or</p>
+          <label class="btn btn-primary" for="splitFileInput">
+            Select PDF
+            <input type="file" id="splitFileInput" accept=".pdf,application/pdf" aria-label="Select PDF file to split" />
+          </label>
+          <p class="drop-zone-hint">Select one PDF document</p>
+        </div>
+      </section>
+
+      <!-- Split Configuration Section (hidden until file loaded) -->
+      <section id="splitConfigSection" class="split-config-section hidden">
+        <div class="file-summary-card">
+          <div class="file-summary-info">
+            <div class="file-summary-name" id="splitFileName">document.pdf</div>
+            <div class="file-summary-meta" id="splitFileMeta">0 pages · 0 MB</div>
+          </div>
+          <button id="splitChangeFileBtn" class="btn btn-ghost btn-sm">Change File</button>
+        </div>
+
+        <div class="split-modes-card">
+          <h3 class="config-heading">Choose Split Mode:</h3>
+          
+          <div class="split-mode-option">
+            <label class="radio-label">
+              <input type="radio" name="splitMode" value="extract" checked />
+              <span class="radio-title">Extract Specific Pages</span>
+            </label>
+            <div class="split-mode-content" id="splitModeExtractWrap">
+              <p class="field-hint">Specify pages or ranges (e.g., <code>1-3, 5, 8-end</code>):</p>
+              <input type="text" id="splitPageRangeInput" class="input-text" placeholder="e.g. 1-3, 5" value="1-2" />
+              <div id="splitRangeFeedback" class="range-feedback"></div>
+            </div>
+          </div>
+
+          <div class="split-mode-option">
+            <label class="radio-label">
+              <input type="radio" name="splitMode" value="all" />
+              <span class="radio-title">Split into Individual Pages</span>
+            </label>
+            <p class="field-hint indent">Generates a separate single-page PDF for every page in this document.</p>
+          </div>
+
+          <div class="split-mode-option">
+            <label class="radio-label">
+              <input type="radio" name="splitMode" value="fixed" />
+              <span class="radio-title">Split by Page Interval</span>
+            </label>
+            <div class="split-mode-content indent" id="splitModeFixedWrap">
+              <div class="inline-input-group">
+                <span>Split into documents of</span>
+                <input type="number" id="splitIntervalInput" class="input-number" min="1" max="1000" value="2" />
+                <span>pages each</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Split Progress -->
+        <div id="splitProgressContainer" class="progress-container hidden" aria-live="polite">
+          <div class="progress-info">
+            <span id="splitProgressLabel">Splitting…</span>
+            <span id="splitProgressPercent">0%</span>
+          </div>
+          <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <div id="splitProgressFill" class="progress-fill"></div>
+          </div>
+        </div>
+
+        <div class="merge-actions">
+          <button id="splitExecuteBtn" class="btn btn-primary btn-lg">
+            <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="2">
+              <circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>
+            </svg>
+            Split &amp; Download
+          </button>
+        </div>
+
+        <div id="splitResultsArea" class="split-results-area hidden"></div>
+      </section>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- PANEL 3: ROTATE PDF                                      -->
+    <!-- ======================================================== -->
+    <div id="panelRotate" class="tab-panel hidden" role="tabpanel" aria-labelledby="tabRotate">
+      <section class="hero">
+        <h1>Rotate PDF Online</h1>
+        <p class="hero-subtitle">Permanently rotate all pages or individual pages of a PDF document clockwise or counter-clockwise.</p>
+      </section>
+
+      <!-- Rotate Upload Zone -->
+      <section class="upload-section">
+        <div id="rotateDropZone" class="drop-zone" role="button" tabindex="0" aria-label="Drop a PDF file to rotate">
+          <div class="drop-zone-icon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none">
+              <rect x="14" y="10" width="36" height="44" rx="4" stroke="currentColor" stroke-width="3"/>
+              <path d="M48 24a14 14 0 1 0 4 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              <path d="M52 18v6h-6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <p class="drop-zone-title">Drop a PDF file here to rotate</p>
+          <p class="drop-zone-subtitle">or</p>
+          <label class="btn btn-primary" for="rotateFileInput">
+            Select PDF
+            <input type="file" id="rotateFileInput" accept=".pdf,application/pdf" aria-label="Select PDF file to rotate" />
+          </label>
+          <p class="drop-zone-hint">Select one PDF document</p>
+        </div>
+      </section>
+
+      <!-- Rotate Configuration & Page Grid -->
+      <section id="rotateConfigSection" class="rotate-config-section hidden">
+        <div class="file-summary-card">
+          <div class="file-summary-info">
+            <div class="file-summary-name" id="rotateFileName">document.pdf</div>
+            <div class="file-summary-meta" id="rotateFileMeta">0 pages · 0 MB</div>
+          </div>
+          <button id="rotateChangeFileBtn" class="btn btn-ghost btn-sm">Change File</button>
+        </div>
+
+        <!-- Global Rotation Action Toolbar -->
+        <div class="rotate-toolbar">
+          <button id="rotateAllCwBtn" class="btn btn-secondary btn-sm" title="Rotate all pages 90° clockwise">
+            Rotate All +90° ↻
+          </button>
+          <button id="rotateAllCcwBtn" class="btn btn-secondary btn-sm" title="Rotate all pages 90° counter-clockwise">
+            Rotate All -90° ↺
+          </button>
+          <button id="rotateAll180Btn" class="btn btn-secondary btn-sm" title="Flip all pages 180°">
+            Flip 180° ↕
+          </button>
+          <button id="rotateResetBtn" class="btn btn-ghost btn-sm" title="Reset all rotations to original">
+            Reset All
+          </button>
+        </div>
+
+        <p class="drag-hint">Click individual rotation buttons on any page card below to rotate single pages:</p>
+
+        <!-- Page Thumbnail Grid for Rotation -->
+        <div id="rotateThumbnailsGrid" class="page-grid" aria-label="Page rotation grid"></div>
+
+        <!-- Rotate Progress -->
+        <div id="rotateProgressContainer" class="progress-container hidden" aria-live="polite">
+          <div class="progress-info">
+            <span id="rotateProgressLabel">Rotating…</span>
+            <span id="rotateProgressPercent">0%</span>
+          </div>
+          <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <div id="rotateProgressFill" class="progress-fill"></div>
+          </div>
+        </div>
+
+        <div class="merge-actions">
+          <button id="rotateExecuteBtn" class="btn btn-primary btn-lg">
+            <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-1.19"/>
+            </svg>
+            Save &amp; Download Rotated PDF
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- MODAL 1: VISUAL PAGE ORGANIZER                           -->
+    <!-- ======================================================== -->
+    <div id="organizerModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Visual Page Organizer">
+      <div class="modal-backdrop" id="organizerBackdrop"></div>
+      <div class="modal-content modal-content-lg">
+        <div class="modal-header">
+          <div>
+            <h3 id="organizerTitle">Visual Page Organizer</h3>
+            <p id="organizerSubtitle" class="modal-subtitle">Drag pages to reorder, rotate pages, or click to include/exclude.</p>
+          </div>
+          <button id="closeOrganizer" class="btn btn-icon" aria-label="Close page organizer">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
+              <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Organizer Action Bar -->
+        <div class="organizer-toolbar">
+          <div class="organizer-toolbar-group">
+            <button id="orgSelectAllBtn" class="btn btn-ghost btn-xs">Select All</button>
+            <button id="orgDeselectAllBtn" class="btn btn-ghost btn-xs">Deselect All</button>
+            <button id="orgRotateAllBtn" class="btn btn-ghost btn-xs">Rotate All +90°</button>
+            <button id="orgResetBtn" class="btn btn-ghost btn-xs">Reset</button>
+          </div>
+          <div id="orgStatsSummary" class="organizer-stats">0 of 0 pages selected</div>
+        </div>
+
+        <div class="modal-body modal-body-scroll">
+          <div id="organizerGrid" class="page-grid sortable-grid" aria-label="Reorderable page thumbnails"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="orgCancelBtn" class="btn btn-ghost">Cancel</button>
+          <button id="orgApplyBtn" class="btn btn-primary">Apply Changes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- MODAL 2: INLINE PDF PREVIEW                              -->
+    <!-- ======================================================== -->
     <div id="previewModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="PDF preview">
       <div class="modal-backdrop" id="modalBackdrop"></div>
-      <div class="modal-content">
+      <div class="modal-content modal-content-lg">
         <div class="modal-header">
           <h3 id="previewTitle">Preview</h3>
           <button id="closePreview" class="btn btn-icon" aria-label="Close preview">
@@ -128,11 +424,55 @@
       </div>
     </div>
 
+    <!-- ======================================================== -->
+    <!-- MODAL 3: MERGED RESULT & ACTION MODAL                    -->
+    <!-- ======================================================== -->
+    <div id="resultModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Merge complete">
+      <div class="modal-backdrop" id="resultBackdrop"></div>
+      <div class="modal-content modal-content-lg">
+        <div class="modal-header">
+          <div class="result-header-text">
+            <h3>✓ PDFs Merged Successfully!</h3>
+            <p id="resultDetails" class="modal-subtitle">Ready to preview and download.</p>
+          </div>
+          <button id="closeResult" class="btn btn-icon" aria-label="Close result modal">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
+              <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <iframe id="resultFrame" title="Merged PDF preview" aria-label="Merged PDF preview"></iframe>
+        </div>
+
+        <div class="modal-footer result-footer">
+          <button id="resultOpenTabBtn" class="btn btn-secondary">
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+            </svg>
+            Open in New Tab
+          </button>
+          <button id="resultDownloadBtn" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Download PDF
+          </button>
+        </div>
+      </div>
+    </div>
+
   </main>
 
   <!-- ===== FOOTER ===== -->
   <footer class="app-footer">
-    <p>All processing happens in your browser – your files are never uploaded to any server.</p>
+    <div class="footer-content">
+      <p>All processing happens locally in your browser – your files are never uploaded to any server.</p>
+      <div class="footer-links">
+        <span>Offline PWA Ready</span> · <span>Private &amp; Secure</span>
+      </div>
+    </div>
   </footer>
 
   <!-- Application scripts (ES modules) -->

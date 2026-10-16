@@ -1,22 +1,41 @@
-# PDF Merger
+# PDF Merger & Toolbox
 
-A fully client-side **PDF Merger Web Application** built with plain HTML, CSS, and JavaScript (ES modules). All PDF processing happens in the browser using [pdf-lib](https://pdf-lib.js.org/) — your files never leave your device.
+A fully client-side, offline-capable **PDF Merger & Toolbox Web Application** built with plain HTML, modern CSS, and JavaScript (ES modules). All PDF processing happens securely in the browser using [pdf-lib](https://pdf-lib.js.org/) and [PDF.js](https://mozilla.github.io/pdf.js/) — your files never leave your device.
 
 ---
 
-## ✨ Features
+## ✨ Features & Capabilities
 
-| Feature | Details |
-|---|---|
-| **Multi-file upload** | Click to browse or drag-and-drop multiple PDFs at once |
-| **Drag-to-reorder** | Rearrange files in any order before merging (SortableJS) |
-| **PDF preview** | Inline preview each file before merging |
-| **Remove files** | Remove individual files or clear the whole list |
-| **Progress bar** | Real-time merge progress with status labels |
-| **Error handling** | Validates file type, size (≤ 100 MB per file), and duplicates |
-| **Dark mode** | Full dark/light mode with OS preference detection and localStorage persistence |
-| **Private** | 100% client-side — nothing is uploaded to a server |
-| **Deployable** | Ready to deploy on Netlify (static hosting) |
+### 📑 1. Merge PDF Tool
+- **Multi-file upload**: Click to browse or drag-and-drop multiple PDFs at once.
+- **Drag-to-reorder & Accessibility**: Rearrange files in any order via SortableJS drag-and-drop or accessible ▲▼ buttons.
+- **Quick sorting toolbar**: Sort files alphabetically (A→Z, Z→A), by file size, or reverse order in one click.
+- **Page range selection**: Choose specific pages or ranges for each file (e.g., `1-3, 5`, `2-end`) with real-time syntax validation.
+- **Document rotation**: Quickly rotate documents by 90°, 180°, or 270° clockwise.
+- **Aggregate summary**: Live display of total files, selected pages, and combined file size.
+- **Custom output filename**: Define your own download filename (e.g. `quarterly-report.pdf`).
+- **In-app preview & download**: Inspect the merged result directly in an embedded viewer before or after downloading.
+
+### 🖼️ 2. Visual Page Organizer
+- **Interactive thumbnail grid**: Render crisp visual thumbnails of every page across documents using PDF.js (with canvas placeholder fallback).
+- **Page-level reordering**: Drag and drop individual pages to reorder the final document layout.
+- **Exclude / delete pages**: Visually toggle pages to include or omit from the merged result.
+- **Rotate individual pages**: Rotate sideways or upside-down pages individually.
+
+### ✂️ 3. Split PDF Tool
+- **Extract specific ranges**: Extract pages (e.g. `1-3, 5-8`) into a new PDF document.
+- **Split into individual pages**: Automatically generate a separate PDF for every page in a document.
+- **Split by fixed interval**: Divide documents into chunks of $N$ pages each.
+
+### 🔄 4. Rotate PDF Tool
+- **Global document rotation**: Rotate all pages 90° clockwise, 90° counter-clockwise, or flip 180°.
+- **Visual page grid**: View page thumbnails and click individual rotation buttons to orient specific pages.
+- **Save & download**: Export the newly rotated PDF instantly.
+
+### 📱 5. Offline PWA Support
+- **Progressive Web App**: Installable to desktop or mobile with `manifest.webmanifest`.
+- **Service Worker**: Cache-first offline strategy via `sw.js` — works without an active internet connection.
+- **100% Private**: Zero servers, zero uploads, zero tracking.
 
 ---
 
@@ -24,50 +43,48 @@ A fully client-side **PDF Merger Web Application** built with plain HTML, CSS, a
 
 ```
 pdf-merger/
-├── index.html          # Main HTML entry point
-├── netlify.toml        # Netlify deployment config & security headers
+├── index.html               # Main application entry point & tool tabs
+├── manifest.webmanifest     # PWA manifest
+├── sw.js                    # Service worker for offline caching
+├── netlify.toml             # Netlify deployment configuration & CSP headers
 ├── .gitignore
 ├── README.md
 └── src/
     ├── css/
-    │   └── styles.css  # All styles (tokens, layout, components, dark mode)
+    │   └── styles.css       # Design tokens, layouts, tool panels, dark mode
+    ├── icons/
+    │   ├── icon-192.png     # PWA icon (192x192)
+    │   └── icon-512.png     # PWA icon (512x512)
     └── js/
-        ├── main.js         # Application entry point – wires everything together
-        ├── fileManager.js  # In-memory file list (add, remove, reorder, validate)
-        ├── pdfMerger.js    # PDF merging logic via pdf-lib
-        ├── ui.js           # All DOM updates (rendering, messages, progress, modal)
-        └── utils.js        # Pure utility functions (formatBytes, uid, debounce, …)
+        ├── main.js              # Application entry point – connects tools & events
+        ├── fileManager.js       # In-memory file & page state manager
+        ├── pdfTools.js          # PDF operations (merge, split, rotate, page count)
+        ├── pdfMerger.js         # Backward-compatible wrapper
+        ├── pageRange.js         # Page range syntax parser & validator
+        ├── thumbnailRenderer.js # PDF.js thumbnail generation & caching
+        ├── ui.js                # DOM rendering, modals, file lists, progress
+        └── utils.js             # Utility helpers (formatBytes, sanitiseFilename, uid, ...)
 ```
-
-### Key Modules
-
-| Module | Responsibility |
-|---|---|
-| `main.js` | Bootstraps the app; connects FileManager ↔ UI ↔ PDF merger; handles events |
-| `fileManager.js` | Single source of truth for the file list; validates files; emits change events |
-| `pdfMerger.js` | Reads files as ArrayBuffers, loads with pdf-lib, copies pages, serialises output |
-| `ui.js` | Pure DOM helpers – renders file list items, progress bar, modal, and banners |
-| `utils.js` | Stateless helpers: `formatBytes`, `sanitiseFilename`, `uid`, `debounce` |
 
 ---
 
 ## 🚀 Local Development
 
-No build step is required. The app uses native ES modules supported in all modern browsers.
+No build step or Node.js environment is required. The app uses native ES modules supported in all modern browsers.
 
-### Option 1 – VS Code Live Server (recommended)
-
-1. Install the [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) extension.
-2. Open the project folder in VS Code.
-3. Click **"Go Live"** in the status bar.
-
-### Option 2 – Python HTTP server
+### Option 1 – Python HTTP server (Quickest)
 
 ```bash
 # Python 3
 python3 -m http.server 3000
-# Then open http://localhost:3000
+# Then open http://localhost:3000 in your browser
 ```
+
+### Option 2 – VS Code Live Server
+
+1. Install the [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) extension.
+2. Open the project folder in VS Code.
+3. Click **"Go Live"** in the status bar.
 
 ### Option 3 – Node.js `serve`
 
@@ -81,66 +98,47 @@ npx serve .
 
 ## ☁️ Deployment on Netlify
 
-### Step-by-step (Netlify UI)
+### Netlify UI
 
-1. Push this repository to GitHub (or fork it).
+1. Push this repository to GitHub.
 2. Go to [app.netlify.com](https://app.netlify.com) and click **"Add new site → Import an existing project"**.
-3. Connect your GitHub account and select the `pdf-merger` repository.
-4. Set the **Build settings**:
-   - **Build command:** *(leave empty)*
-   - **Publish directory:** `.` (root)
+3. Select your `pdf-merger` repository.
+4. Leave the **Build command** empty and set **Publish directory** to `.` (root).
 5. Click **"Deploy site"**.
-6. Netlify will deploy within seconds. Your site URL will appear in the dashboard.
 
-### Step-by-step (Netlify CLI)
+### Netlify CLI
 
 ```bash
-# Install Netlify CLI
-npm install -g netlify-cli
-
-# Login
-netlify login
-
-# Deploy (from project root)
+# Deploy from project root
 netlify deploy --dir . --prod
 ```
 
 The included `netlify.toml` configures:
 - **Publish directory:** root (`.`)
 - **Security headers:** CSP, X-Frame-Options, X-Content-Type-Options, etc.
-- **Cache headers:** Long-cache for files under `src/`
+- **Cache headers:** Immutable caching for static assets, no-cache for `sw.js`.
 
 ---
 
-## 🔒 Security
+## 🔒 Privacy & Security
 
-- All PDF processing is 100% client-side — no data leaves the browser.
-- Strict Content-Security-Policy only allows scripts from `self`, `unpkg.com`, and `cdn.jsdelivr.net`.
-- File input is validated for type (`application/pdf`) and size (≤ 100 MB).
-- Filenames are sanitised before use as download attributes.
-- Object URLs are revoked after use to avoid memory leaks.
+- **Zero Server Uploads**: 100% of PDF processing happens locally in the browser's JavaScript sandbox.
+- **Strict CSP**: Configured in `netlify.toml` to protect against unauthorized script execution and injections.
+- **Sanitized Filenames**: Download filenames are sanitized to prevent illegal characters or path traversal.
+- **Memory Management**: Generated Object URLs are automatically revoked to prevent memory leaks.
 
 ---
 
-## 📦 Dependencies (CDN – no install needed)
+## 📦 Dependencies (CDN)
 
 | Library | Version | Purpose |
 |---|---|---|
-| [pdf-lib](https://pdf-lib.js.org/) | 1.17.1 | PDF parsing, page copying, and serialisation |
-| [SortableJS](https://sortablejs.github.io/Sortable/) | 1.15.3 | Drag-and-drop list reordering |
-
----
-
-## 🌐 Browser Support
-
-Works in all modern browsers (Chrome, Firefox, Edge, Safari) that support:
-- ES Modules (`type="module"`)
-- `FileReader` API
-- `URL.createObjectURL`
-- CSS custom properties
+| [pdf-lib](https://pdf-lib.js.org/) | 1.17.1 | PDF creation, page extraction, rotation, and serialisation |
+| [SortableJS](https://sortablejs.github.io/Sortable/) | 1.15.3 | Drag-and-drop list and grid reordering |
+| [PDF.js](https://mozilla.github.io/pdf.js/) | 3.11.174 | Rendering high-fidelity page thumbnails in canvas |
 
 ---
 
 ## 📄 License
 
-MIT – free to use and modify.
+MIT – free to use, modify, and distribute.

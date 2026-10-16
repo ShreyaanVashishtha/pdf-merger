@@ -1,11 +1,10 @@
-# Netlify configuration for PDF Merger
+# Netlify configuration for PDF Merger & Toolbox
 # Static site – no build step required.
 
 [build]
   publish = "."
 
-# Redirect all paths to index.html (SPA fallback – not strictly needed
-# for a single-page static app but good practice)
+# Redirect all paths to index.html (SPA fallback)
 [[redirects]]
   from   = "/*"
   to     = "/index.html"
@@ -15,19 +14,21 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options            = "DENY"
+    X-Frame-Options            = "SAMEORIGIN"
     X-Content-Type-Options     = "nosniff"
     X-XSS-Protection           = "1; mode=block"
     Referrer-Policy            = "strict-origin-when-cross-origin"
     Permissions-Policy         = "camera=(), microphone=(), geolocation=()"
-    # Allow pdf-lib and Sortable from CDN.
-    # Note: JavaScript element.style property manipulation is NOT governed by
-    # style-src (only <style> tags and style= attributes are), so the app's
-    # runtime style updates (progress bar width, overflow, etc.) are unaffected.
-    Content-Security-Policy    = "default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://unpkg.com https://cdn.jsdelivr.net; frame-src blob:; worker-src blob:;"
+    # Allow pdf-lib, Sortable, and PDF.js from CDNs and service worker caching
+    Content-Security-Policy    = "default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; frame-src 'self' blob:; worker-src 'self' blob: https://cdnjs.cloudflare.com; manifest-src 'self';"
 
-# Long-cache for versioned static assets
+# Long-cache for static assets
 [[headers]]
   for = "/src/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
