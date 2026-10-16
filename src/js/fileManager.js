@@ -10,8 +10,8 @@
  *  - Emit events on any state change
  */
 
-import { uid, formatBytes } from './utils.js';
-import { parsePageRange } from './pageRange.js';
+import { uid, formatBytes } from './utils.js?v=2.2.0';
+import { parsePageRange } from './pageRange.js?v=2.2.0';
 
 /** Maximum allowed file size in bytes (100 MB). */
 export const MAX_FILE_SIZE = 100 * 1024 * 1024;

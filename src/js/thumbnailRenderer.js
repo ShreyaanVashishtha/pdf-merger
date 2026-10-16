@@ -3,7 +3,7 @@
  * Uses PDF.js when available, with a responsive canvas placeholder fallback.
  */
 
-import { readFileAsArrayBuffer } from './pdfTools.js';
+import { readFileAsArrayBuffer } from './pdfTools.js?v=2.2.0';
 
 // Cache for loaded PDFDocumentLoadingTask objects
 const docCache = new Map();

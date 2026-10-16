@@ -1,16 +1,16 @@
 /**
- * Service Worker for PDF Merger PWA
+ * Service Worker for PDF Merger & Toolbox PWA
  * Provides offline caching for application shell and vendor libraries.
  */
 
-const CACHE_NAME = 'pdf-merger-v2';
+const CACHE_NAME = 'pdf-toolbox-v2.2.0';
 
 const PRECACHE_URLS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './src/css/styles.css',
-  './src/js/main.js',
+  './src/css/styles.css?v=2.2.0',
+  './src/js/main.js?v=2.2.0',
   './src/js/ui.js',
   './src/js/fileManager.js',
   './src/js/pdfMerger.js',
@@ -27,11 +27,11 @@ const PRECACHE_URLS = [
 ];
 
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
     caches
       .open(CACHE_NAME)
       .then(cache => cache.addAll(PRECACHE_URLS).catch(err => console.warn('[SW] Precache issue:', err)))
-      .then(() => self.skipWaiting())
   );
 });
 
@@ -43,6 +43,7 @@ self.addEventListener('activate', event => {
         Promise.all(
           keys.map(key => {
             if (key !== CACHE_NAME) {
+              console.log('[SW] Clearing old cache:', key);
               return caches.delete(key);
             }
           })
@@ -55,9 +56,23 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request;
 
-  // Only handle GET requests
   if (request.method !== 'GET') return;
 
+  // For HTML documents, try network first, then cache
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  // For static assets, try cache first, then network
   event.respondWith(
     caches.match(request).then(cachedResponse => {
       if (cachedResponse) {
@@ -66,7 +81,6 @@ self.addEventListener('fetch', event => {
 
       return fetch(request)
         .then(response => {
-          // Cache successful responses from same-origin or authorized CDNs
           if (!response || response.status !== 200 || response.type === 'opaque') {
             return response;
           }
@@ -87,7 +101,6 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() => {
-          // If offline and request is for navigation, return cached index.html
           if (request.mode === 'navigate') {
             return caches.match('./index.html');
           }

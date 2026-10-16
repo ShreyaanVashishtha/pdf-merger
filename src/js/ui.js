@@ -5,8 +5,8 @@
  * stay framework-agnostic and easier to unit-test.
  */
 
-import { formatBytes } from './utils.js';
-import { renderPageThumbnail } from './thumbnailRenderer.js';
+import { formatBytes } from './utils.js?v=2.2.0';
+import { renderPageThumbnail } from './thumbnailRenderer.js?v=2.2.0';
 
 /* ── Cached DOM references ─────────────────────────────────── */
 const fileListEl          = /** @type {HTMLUListElement}  */ (document.getElementById('fileList'));
