@@ -5,8 +5,8 @@
  * stay framework-agnostic and easier to unit-test.
  */
 
-import { formatBytes } from './utils.js?v=2.2.0';
-import { renderPageThumbnail } from './thumbnailRenderer.js?v=2.2.0';
+import { formatBytes } from './utils.js?v=2.3.0';
+import { renderPageThumbnail } from './thumbnailRenderer.js?v=2.3.0';
 
 /* ── Cached DOM references ─────────────────────────────────── */
 const fileListEl          = /** @type {HTMLUListElement}  */ (document.getElementById('fileList'));
@@ -49,6 +49,38 @@ let activeSortableOrganizer = null;
 /* ── Rendering File List ───────────────────────────────────── */
 
 /**
+ * Updates stats summary text without touching the list items.
+ * @param {{ totalFiles: number, totalSize: number, totalDocPages: number, selectedPages: number, isLoading?: boolean }} stats
+ */
+export function updateStatsSummary(stats) {
+  if (stats.isLoading) {
+    statsSummaryEl.textContent = `${stats.totalFiles} file${stats.totalFiles === 1 ? '' : 's'} · Detecting pages… · ${formatBytes(stats.totalSize)}`;
+  } else {
+    statsSummaryEl.textContent = `${stats.totalFiles} file${stats.totalFiles === 1 ? '' : 's'} · ${stats.selectedPages} of ${stats.totalDocPages || '?'} pages selected · ${formatBytes(stats.totalSize)}`;
+  }
+}
+
+/**
+ * Updates feedback label and style for a single file item in-place without re-rendering DOM.
+ * @param {string} id
+ * @param {string|null} error
+ * @param {string} summary
+ */
+export function updateItemRangeFeedback(id, error, summary) {
+  const li = fileListEl.querySelector(`li[data-id="${id}"]`);
+  if (!li) return;
+  const label = li.querySelector('.range-label');
+  const input = li.querySelector('.page-range-input');
+  if (label) {
+    label.textContent = error || summary || 'All pages';
+    label.classList.toggle('text-error', !!error);
+  }
+  if (input) {
+    input.classList.toggle('input-error', !!error);
+  }
+}
+
+/**
  * Re-render the file list.
  *
  * @param {import('./fileManager.js').FileEntry[]} files
@@ -72,13 +104,27 @@ export function renderFileList(files, callbacks) {
   let totalSize = 0;
   let totalDocPages = 0;
   let selectedPages = 0;
+  let isLoading = false;
   files.forEach(f => {
     totalSize += f.file.size;
-    totalDocPages += f.pageCount;
-    selectedPages += f.parsedIndices.length;
+    totalDocPages += (f.pageCount || 0);
+    if (f.pageCount === 0 && !f.fileError) {
+      isLoading = true;
+    }
+    if (f.parsedIndices && f.parsedIndices.length > 0) {
+      selectedPages += f.parsedIndices.length;
+    } else if (f.pageCount > 0 && !f.rangeError) {
+      selectedPages += f.pageCount;
+    }
   });
 
-  statsSummaryEl.textContent = `${files.length} file${files.length === 1 ? '' : 's'} · ${selectedPages} of ${totalDocPages || '?'} pages selected · ${formatBytes(totalSize)}`;
+  updateStatsSummary({
+    totalFiles: files.length,
+    totalSize,
+    totalDocPages,
+    selectedPages,
+    isLoading,
+  });
 
   // Clear list and re-render
   fileListEl.innerHTML = '';
@@ -92,7 +138,16 @@ export function renderFileList(files, callbacks) {
     const isFirst = index === 0;
     const isLast = index === files.length - 1;
     const isRotated = entry.rotation > 0;
-    const hasError = !!entry.rangeError;
+    const hasError = !!(entry.rangeError || entry.fileError);
+
+    let pageBadgeHtml = '';
+    if (entry.fileError) {
+      pageBadgeHtml = `<span class="page-badge text-danger" title="${escapeHtml(entry.fileError)}">Unreadable PDF</span>`;
+    } else if (entry.pageCount > 0) {
+      pageBadgeHtml = `<span class="page-badge">${entry.pageCount} pages</span>`;
+    } else {
+      pageBadgeHtml = `<span class="page-badge">Loading…</span>`;
+    }
 
     li.innerHTML = `
       <span class="drag-handle" aria-hidden="true" title="Drag to reorder">
@@ -110,7 +165,7 @@ export function renderFileList(files, callbacks) {
         <div class="file-name" title="${escapeHtml(entry.file.name)}">${escapeHtml(entry.file.name)}</div>
         <div class="file-meta-row">
           <span class="file-meta">${formatBytes(entry.file.size)}</span>
-          <span class="page-badge">${entry.pageCount > 0 ? `${entry.pageCount} pages` : 'Loading…'}</span>
+          ${pageBadgeHtml}
         </div>
       </div>
 
@@ -123,21 +178,22 @@ export function renderFileList(files, callbacks) {
           value="${escapeHtml(entry.pageRange)}"
           title="Specify pages or ranges to include"
           aria-label="Pages to include from ${escapeHtml(entry.file.name)}"
+          ${entry.fileError ? 'disabled' : ''}
         />
         <span class="range-label ${hasError ? 'text-error' : ''}">
-          ${hasError ? escapeHtml(entry.rangeError) : escapeHtml(entry.rangeSummary || 'All pages')}
+          ${hasError ? escapeHtml(entry.fileError || entry.rangeError) : escapeHtml(entry.rangeSummary || 'All pages')}
         </span>
       </div>
 
       <div class="file-item-actions">
-        <button class="btn btn-rotate-file ${isRotated ? 'is-rotated' : ''}" data-id="${entry.id}" title="Rotate document 90° clockwise" aria-label="Rotate ${escapeHtml(entry.file.name)}">
+        <button class="btn btn-rotate-file ${isRotated ? 'is-rotated' : ''}" data-id="${entry.id}" title="Rotate document 90° clockwise" aria-label="Rotate ${escapeHtml(entry.file.name)}" ${entry.fileError ? 'disabled' : ''}>
           <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2">
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-1.19"/>
           </svg>
           ${isRotated ? `${entry.rotation}°` : 'Rotate'}
         </button>
 
-        <button class="btn btn-organizer-file" data-id="${entry.id}" title="Visually organize individual pages" aria-label="Organize pages of ${escapeHtml(entry.file.name)}">
+        <button class="btn btn-organizer-file" data-id="${entry.id}" title="Visually organize individual pages" aria-label="Organize pages of ${escapeHtml(entry.file.name)}" ${entry.fileError ? 'disabled' : ''}>
           Pages
         </button>
 
@@ -229,6 +285,14 @@ export function showPreview(file) {
   activePreviewUrl = URL.createObjectURL(file);
   previewFrame.src = activePreviewUrl;
   previewTitle.textContent = file.name;
+
+  const previewOpenTabBtn = document.getElementById('previewOpenTabBtn');
+  if (previewOpenTabBtn) {
+    previewOpenTabBtn.onclick = () => {
+      if (activePreviewUrl) window.open(activePreviewUrl, '_blank');
+    };
+  }
+
   previewModal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 }

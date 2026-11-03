@@ -1,23 +1,25 @@
 /**
  * Service Worker for PDF Merger & Toolbox PWA
- * Provides offline caching for application shell and vendor libraries.
+ * Strategy:
+ *  - Same-origin assets & navigation: Network-First with Cache-Fallback (prevents stale code bugs)
+ *  - CDN libraries (pdf-lib, sortablejs, pdf.js): Cache-First with Network-Fallback (immutable versions)
  */
 
-const CACHE_NAME = 'pdf-toolbox-v2.2.0';
+const CACHE_NAME = 'pdf-toolbox-v2.3.0';
 
 const PRECACHE_URLS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './src/css/styles.css?v=2.2.0',
-  './src/js/main.js?v=2.2.0',
-  './src/js/ui.js',
-  './src/js/fileManager.js',
+  './src/css/styles.css?v=2.3.0',
+  './src/js/main.js?v=2.3.0',
+  './src/js/ui.js?v=2.3.0',
+  './src/js/fileManager.js?v=2.3.0',
   './src/js/pdfMerger.js',
-  './src/js/pdfTools.js',
-  './src/js/pageRange.js',
-  './src/js/thumbnailRenderer.js',
-  './src/js/utils.js',
+  './src/js/pdfTools.js?v=2.3.0',
+  './src/js/pageRange.js?v=2.3.0',
+  './src/js/thumbnailRenderer.js?v=2.3.0',
+  './src/js/utils.js?v=2.3.0',
   './src/icons/icon-192.png',
   './src/icons/icon-512.png',
   'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js',
@@ -31,7 +33,7 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then(cache => cache.addAll(PRECACHE_URLS).catch(err => console.warn('[SW] Precache issue:', err)))
+      .then(cache => cache.addAll(PRECACHE_URLS).catch(err => console.warn('[SW] Precache notice:', err)))
   );
 });
 
@@ -55,55 +57,60 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const request = event.request;
-
   if (request.method !== 'GET') return;
 
-  // For HTML documents, try network first, then cache
+  const url = new URL(request.url);
+  const isSameOrigin = url.origin === self.location.origin;
+
+  // 1. Navigation (HTML pages): Network-First, fallback to cached index.html
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          }
           return response;
         })
-        .catch(() => caches.match('./index.html'))
+        .catch(() => caches.match('./index.html', { ignoreSearch: true }))
     );
     return;
   }
 
-  // For static assets, try cache first, then network
+  // 2. Same-origin assets (JS/CSS/images): Network-First to guarantee latest code updates
+  if (isSameOrigin) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request, { ignoreSearch: true }))
+    );
+    return;
+  }
+
+  // 3. Third-party CDN libraries: Cache-First, fallback to network
   event.respondWith(
-    caches.match(request).then(cachedResponse => {
+    caches.match(request, { ignoreSearch: true }).then(cachedResponse => {
       if (cachedResponse) {
         return cachedResponse;
       }
 
       return fetch(request)
         .then(response => {
-          if (!response || response.status !== 200 || response.type === 'opaque') {
-            return response;
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
           }
-
-          const shouldCache =
-            request.url.startsWith(self.location.origin) ||
-            request.url.includes('unpkg.com') ||
-            request.url.includes('jsdelivr.net') ||
-            request.url.includes('cdnjs.cloudflare.com');
-
-          if (shouldCache) {
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(request, responseToCache);
-            });
-          }
-
           return response;
         })
-        .catch(() => {
-          if (request.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
+        .catch(err => {
+          console.warn('[SW] Fetch failed for:', request.url, err);
         });
     })
   );

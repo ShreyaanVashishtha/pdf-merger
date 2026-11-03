@@ -25,7 +25,7 @@
  */
 export function parsePageRange(input, totalPages) {
   if (totalPages <= 0) {
-    return { indices: [], error: 'Document has no pages', summary: '0 pages' };
+    return { indices: [], error: null, summary: 'Loading pages…' };
   }
 
   const raw = (input || '').trim().toLowerCase();

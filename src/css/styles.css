@@ -1085,6 +1085,17 @@ a { color: var(--primary); text-decoration: none; }
   margin-top: 1rem;
 }
 
+.split-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.25rem;
+}
+
 .split-result-item {
   display: flex;
   align-items: center;

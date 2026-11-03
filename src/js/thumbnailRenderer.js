@@ -3,7 +3,7 @@
  * Uses PDF.js when available, with a responsive canvas placeholder fallback.
  */
 
-import { readFileAsArrayBuffer } from './pdfTools.js?v=2.2.0';
+import { readFileAsArrayBuffer } from './pdfTools.js?v=2.3.0';
 
 // Cache for loaded PDFDocumentLoadingTask objects
 const docCache = new Map();
@@ -11,14 +11,26 @@ const docCache = new Map();
 // Cache for generated thumbnail data URLs
 const thumbCache = new Map();
 
+let workerBlobUrl = null;
+
 /**
- * Configure PDF.js worker if available.
+ * Configure PDF.js worker if available using a same-origin Blob trampoline
+ * to avoid cross-origin Worker security restrictions across browsers.
  */
 function ensurePdfjsConfigured() {
   if (typeof window !== 'undefined' && window.pdfjsLib) {
     if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      try {
+        if (!workerBlobUrl) {
+          const workerCode = `importScripts('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js');`;
+          const blob = new Blob([workerCode], { type: 'application/javascript' });
+          workerBlobUrl = URL.createObjectURL(blob);
+        }
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = workerBlobUrl;
+      } catch (e) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
     }
     return true;
   }
@@ -71,26 +83,35 @@ export async function renderPageThumbnail(file, pageIndex, rotation = 0, targetW
 
   if (pdfDoc) {
     try {
-      const page = await pdfDoc.getPage(pageIndex + 1); // 1-indexed
-      const unscaledViewport = page.getViewport({ scale: 1, rotation });
-      const scale = targetWidth / unscaledViewport.width;
-      const viewport = page.getViewport({ scale, rotation });
+      const renderPromise = (async () => {
+        const page = await pdfDoc.getPage(pageIndex + 1); // 1-indexed
+        const unscaledViewport = page.getViewport({ scale: 1, rotation });
+        const scale = targetWidth / Math.max(1, unscaledViewport.width);
+        const viewport = page.getViewport({ scale, rotation });
 
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.floor(viewport.width);
-      canvas.height = Math.floor(viewport.height);
-      const ctx = canvas.getContext('2d');
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.floor(viewport.width));
+        canvas.height = Math.max(1, Math.floor(viewport.height));
+        const ctx = canvas.getContext('2d');
 
-      // White background
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // White background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      await page.render({ canvasContext: ctx, viewport }).promise;
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        return canvas.toDataURL('image/jpeg', 0.85);
+      })();
+
+      // 4-second timeout to prevent complex pages from hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Thumbnail render timeout')), 4000)
+      );
+
+      const dataUrl = await Promise.race([renderPromise, timeoutPromise]);
       thumbCache.set(cacheKey, dataUrl);
       return dataUrl;
     } catch (err) {
-      console.warn(`[ThumbnailRenderer] Render page ${pageIndex + 1} failed:`, err);
+      console.warn(`[ThumbnailRenderer] Render page ${pageIndex + 1} fallback:`, err.message);
     }
   }
 

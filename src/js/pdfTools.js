@@ -23,25 +23,52 @@ export function readFileAsArrayBuffer(file) {
 }
 
 /**
+ * Safely loads a PDFDocument with pdf-lib.
+ * Handles permission-encrypted PDFs (ignoreEncryption: true) and provides clean error messages.
+ *
+ * @param {ArrayBuffer} arrayBuffer
+ * @param {string} fileName
+ * @returns {Promise<any>}
+ */
+export async function loadPdfDocument(arrayBuffer, fileName = 'PDF') {
+  if (typeof PDFLib === 'undefined') {
+    throw new Error('pdf-lib is not loaded. Please check your internet connection or reload the page.');
+  }
+
+  const { PDFDocument } = PDFLib;
+  try {
+    return await PDFDocument.load(arrayBuffer, {
+      ignoreEncryption: true,
+      parseSpeed: PDFLib.ParseSpeeds ? PDFLib.ParseSpeeds.Fast : undefined,
+    });
+  } catch (err) {
+    const msg = (err && err.message) ? err.message.toLowerCase() : '';
+    if (
+      err.name === 'EncryptedPDFError' ||
+      msg.includes('encrypt') ||
+      msg.includes('password')
+    ) {
+      throw new Error(`"${fileName}" is password-protected. Please remove the password before processing.`);
+    }
+    throw new Error(`"${fileName}" could not be parsed as a valid PDF: ${err.message}`);
+  }
+}
+
+/**
  * Quick inspection to get the page count of a PDF file.
  * @param {File} file
  * @returns {Promise<number>}
  */
 export async function getPdfPageCount(file) {
-  if (typeof PDFLib === 'undefined') {
-    throw new Error('pdf-lib is not loaded. Please check your internet connection.');
-  }
-
-  const { PDFDocument } = PDFLib;
   const arrayBuffer = await readFileAsArrayBuffer(file);
-  const doc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+  const doc = await loadPdfDocument(arrayBuffer, file.name);
   return doc.getPageCount();
 }
 
 /**
- * Merge an ordered list of FileEntry objects into a single PDF.
+ * Merge an ordered list of FileEntry or File objects into a single PDF.
  *
- * @param {import('./fileManager.js').FileEntry[]} fileEntries - Ordered array of file entries
+ * @param {Array<import('./fileManager.js').FileEntry|File>} fileEntries - Ordered array of file entries or files
  * @param {(progress: number, label: string) => void} onProgress
  * @returns {Promise<Uint8Array>} Merged PDF bytes
  */
@@ -58,7 +85,7 @@ export async function mergePdfs(fileEntries, onProgress) {
 
   for (let i = 0; i < totalFiles; i++) {
     const entry = fileEntries[i];
-    const file = entry.file;
+    const file = (entry instanceof File || !entry.file) ? entry : entry.file;
 
     onProgress(
       Math.round((i / totalFiles) * 70),
@@ -66,15 +93,7 @@ export async function mergePdfs(fileEntries, onProgress) {
     );
 
     const arrayBuffer = await readFileAsArrayBuffer(file);
-
-    let srcDoc;
-    try {
-      srcDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: false });
-    } catch (err) {
-      throw new Error(
-        `"${file.name}" could not be parsed as a valid PDF. It may be password-protected or corrupted. (${err.message})`
-      );
-    }
+    const srcDoc = await loadPdfDocument(arrayBuffer, file.name);
 
     const totalDocPages = srcDoc.getPageCount();
 
@@ -111,8 +130,9 @@ export async function mergePdfs(fileEntries, onProgress) {
       }
 
       if (additionalRotation !== 0) {
-        const currentAngle = page.getRotation ? (page.getRotation().angle || 0) : 0;
-        const finalAngle = (currentAngle + additionalRotation) % 360;
+        const rot = page.getRotation ? page.getRotation() : 0;
+        const currentAngle = typeof rot === 'number' ? rot : (rot?.angle || 0);
+        const finalAngle = ((currentAngle + additionalRotation) % 360 + 360) % 360;
         page.setRotation(degrees(finalAngle));
       }
 
@@ -130,7 +150,7 @@ export async function mergePdfs(fileEntries, onProgress) {
   }
 
   onProgress(92, 'Generating final PDF…');
-  const pdfBytes = await mergedPdf.save();
+  const pdfBytes = await mergedPdf.save({ useObjectStreams: false });
   onProgress(100, 'Done!');
 
   return pdfBytes;
@@ -156,14 +176,14 @@ export async function splitPdf(file, mode, options, onProgress) {
   onProgress(5, `Loading "${file.name}"…`);
 
   const arrayBuffer = await readFileAsArrayBuffer(file);
-  const srcDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: false });
+  const srcDoc = await loadPdfDocument(arrayBuffer, file.name);
   const totalPages = srcDoc.getPageCount();
 
   const baseName = file.name.replace(/\.pdf$/i, '');
   const results = [];
 
   if (mode === 'extract') {
-    const { parsePageRange } = await import('./pageRange.js?v=2.2.0');
+    const { parsePageRange } = await import('./pageRange.js?v=2.3.0');
     const parsed = parsePageRange(options.pageRange || 'all', totalPages);
     if (parsed.error) {
       throw new Error(parsed.error);
@@ -177,7 +197,7 @@ export async function splitPdf(file, mode, options, onProgress) {
     const copiedPages = await newDoc.copyPages(srcDoc, parsed.indices);
     copiedPages.forEach(p => newDoc.addPage(p));
 
-    const bytes = await newDoc.save();
+    const bytes = await newDoc.save({ useObjectStreams: false });
     results.push({
       name: `${baseName}_extracted.pdf`,
       bytes,
@@ -192,7 +212,7 @@ export async function splitPdf(file, mode, options, onProgress) {
       const newDoc = await PDFDocument.create();
       const [copiedPage] = await newDoc.copyPages(srcDoc, [i]);
       newDoc.addPage(copiedPage);
-      const bytes = await newDoc.save();
+      const bytes = await newDoc.save({ useObjectStreams: false });
       const pageStr = String(i + 1).padStart(String(totalPages).length, '0');
       results.push({
         name: `${baseName}_page_${pageStr}.pdf`,
@@ -216,7 +236,7 @@ export async function splitPdf(file, mode, options, onProgress) {
       const newDoc = await PDFDocument.create();
       const copiedPages = await newDoc.copyPages(srcDoc, chunkIndices);
       copiedPages.forEach(p => newDoc.addPage(p));
-      const bytes = await newDoc.save();
+      const bytes = await newDoc.save({ useObjectStreams: false });
 
       results.push({
         name: `${baseName}_part_${partNum}.pdf`,
@@ -247,7 +267,7 @@ export async function rotatePdf(file, rotationOrMap, onProgress) {
   onProgress(10, `Loading "${file.name}"…`);
 
   const arrayBuffer = await readFileAsArrayBuffer(file);
-  const doc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: false });
+  const doc = await loadPdfDocument(arrayBuffer, file.name);
   const pages = doc.getPages();
 
   onProgress(40, 'Applying rotations…');
@@ -260,13 +280,15 @@ export async function rotatePdf(file, rotationOrMap, onProgress) {
     }
 
     if (delta !== 0) {
-      const current = page.getRotation ? (page.getRotation().angle || 0) : 0;
-      page.setRotation(degrees((current + delta) % 360));
+      const rot = page.getRotation ? page.getRotation() : 0;
+      const currentAngle = typeof rot === 'number' ? rot : (rot?.angle || 0);
+      const finalAngle = ((currentAngle + delta) % 360 + 360) % 360;
+      page.setRotation(degrees(finalAngle));
     }
   });
 
   onProgress(80, 'Saving rotated document…');
-  const bytes = await doc.save();
+  const bytes = await doc.save({ useObjectStreams: false });
   onProgress(100, 'Done!');
   return bytes;
 }

@@ -7,12 +7,22 @@
   <meta name="description" content="Merge, split, rotate, and organize PDF files in your browser. 100% private, free, and works offline." />
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#4f46e5" />
-  <link rel="stylesheet" href="src/css/styles.css?v=2.2.0" />
+  <link rel="stylesheet" href="src/css/styles.css?v=2.3.0" />
 
-  <!-- pdf-lib for PDF manipulation -->
+  <!-- pdf-lib for PDF manipulation with fallback -->
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <!-- SortableJS for drag-and-drop reordering -->
+  <script>
+    if (typeof PDFLib === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"><\\/script>');
+    }
+  </script>
+  <!-- SortableJS for drag-and-drop reordering with fallback -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
+  <script>
+    if (typeof Sortable === 'undefined') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.3/Sortable.min.js"><\\/script>');
+    }
+  </script>
   <!-- PDF.js for rendering crisp page thumbnails -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
@@ -415,11 +425,19 @@
       <div class="modal-content modal-content-lg">
         <div class="modal-header">
           <h3 id="previewTitle">Preview</h3>
-          <button id="closePreview" class="btn btn-icon" aria-label="Close preview">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
-              <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </button>
+          <div class="header-actions">
+            <button id="previewOpenTabBtn" class="btn btn-ghost btn-sm" title="Open PDF in new tab" aria-label="Open PDF in new tab">
+              <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+              </svg>
+              Open Tab
+            </button>
+            <button id="closePreview" class="btn btn-icon" aria-label="Close preview">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
+                <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div class="modal-body">
           <iframe id="previewFrame" title="PDF preview" aria-label="PDF preview"></iframe>
@@ -479,6 +497,6 @@
   </footer>
 
   <!-- Application scripts (ES modules) -->
-  <script type="module" src="src/js/main.js?v=2.2.0"></script>
+  <script type="module" src="src/js/main.js?v=2.3.0"></script>
 </body>
 </html>

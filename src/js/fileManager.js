@@ -10,8 +10,8 @@
  *  - Emit events on any state change
  */
 
-import { uid, formatBytes } from './utils.js?v=2.2.0';
-import { parsePageRange } from './pageRange.js?v=2.2.0';
+import { uid, formatBytes } from './utils.js?v=2.3.0';
+import { parsePageRange } from './pageRange.js?v=2.3.0';
 
 /** Maximum allowed file size in bytes (100 MB). */
 export const MAX_FILE_SIZE = 100 * 1024 * 1024;
@@ -102,6 +102,7 @@ export function createFileManager() {
           parsedIndices: [],
           rangeError: null,
           rangeSummary: 'Loading pages…',
+          fileError: null,
           rotation: 0,
           customPages: null,
         };
@@ -124,6 +125,7 @@ export function createFileManager() {
       if (!entry) return;
 
       entry.pageCount = count;
+      entry.fileError = null;
       const parsed = parsePageRange(entry.pageRange, count);
       entry.parsedIndices = parsed.indices;
       entry.rangeError = parsed.error;
@@ -132,13 +134,31 @@ export function createFileManager() {
     },
 
     /**
+     * Sets an error state on a file if parsing or reading failed.
+     * @param {string} id
+     * @param {string} errorMsg
+     */
+    setFileError(id, errorMsg) {
+      const entry = files.find(f => f.id === id);
+      if (!entry) return;
+
+      entry.fileError = errorMsg;
+      entry.pageCount = 0;
+      entry.rangeError = errorMsg;
+      entry.rangeSummary = 'Error';
+      notify();
+    },
+
+    /**
      * Update page range input for a file.
      * @param {string} id
      * @param {string} rangeStr
+     * @param {boolean} [silent=false]
+     * @returns {{ error: string|null, summary: string }|null}
      */
-    setPageRange(id, rangeStr) {
+    setPageRange(id, rangeStr, silent = false) {
       const entry = files.find(f => f.id === id);
-      if (!entry) return;
+      if (!entry) return null;
 
       entry.pageRange = rangeStr;
       if (entry.pageCount > 0) {
@@ -147,7 +167,8 @@ export function createFileManager() {
         entry.rangeError = parsed.error;
         entry.rangeSummary = parsed.summary;
       }
-      notify();
+      if (!silent) notify();
+      return { error: entry.rangeError, summary: entry.rangeSummary };
     },
 
     /**
@@ -262,12 +283,25 @@ export function createFileManager() {
       let totalDocPages = 0;
       let selectedPages = 0;
       let hasErrors = false;
+      let isLoading = false;
 
       files.forEach(f => {
         totalSize += f.file.size;
-        totalDocPages += f.pageCount;
-        selectedPages += f.parsedIndices.length;
-        if (f.rangeError) hasErrors = true;
+        totalDocPages += (f.pageCount || 0);
+
+        if (f.pageCount === 0 && !f.fileError) {
+          isLoading = true;
+        }
+
+        if (f.fileError || f.rangeError) {
+          hasErrors = true;
+        }
+
+        if (f.parsedIndices && f.parsedIndices.length > 0) {
+          selectedPages += f.parsedIndices.length;
+        } else if (f.pageCount > 0 && !f.rangeError) {
+          selectedPages += f.pageCount;
+        }
       });
 
       return {
@@ -276,6 +310,7 @@ export function createFileManager() {
         totalDocPages,
         selectedPages,
         hasErrors,
+        isLoading,
       };
     },
 

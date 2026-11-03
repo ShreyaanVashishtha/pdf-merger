@@ -9,15 +9,17 @@
  *  - PWA Service Worker & Theme toggle
  */
 
-import { createFileManager } from './fileManager.js?v=2.2.0';
+import { createFileManager } from './fileManager.js?v=2.3.0';
 import {
   mergePdfs,
   getPdfPageCount,
   splitPdf,
   rotatePdf,
-} from './pdfTools.js?v=2.2.0';
+} from './pdfTools.js?v=2.3.0';
 import {
   renderFileList,
+  updateItemRangeFeedback,
+  updateStatsSummary,
   showMessage,
   hideMessage,
   showProgress,
@@ -30,10 +32,10 @@ import {
   hideResultModal,
   openPageOrganizer,
   hidePageOrganizer,
-} from './ui.js?v=2.2.0';
-import { sanitiseFilename, downloadBlob } from './utils.js?v=2.2.0';
-import { parsePageRange } from './pageRange.js?v=2.2.0';
-import { renderPageThumbnail } from './thumbnailRenderer.js?v=2.2.0';
+} from './ui.js?v=2.3.0';
+import { sanitiseFilename, downloadBlob } from './utils.js?v=2.3.0';
+import { parsePageRange } from './pageRange.js?v=2.3.0';
+import { renderPageThumbnail } from './thumbnailRenderer.js?v=2.3.0';
 
 /* ── DOM References: Tabs & Global ──────────────────────────── */
 const tabMerge       = /** @type {HTMLButtonElement} */ (document.getElementById('tabMerge'));
@@ -138,7 +140,7 @@ function renderFiles() {
   renderFileList(files, {
     onRemove: removeFile,
     onPreview: showPreview,
-    onRangeChange: (id, range) => fileManager.setPageRange(id, range),
+    onRangeChange: handleRangeChange,
     onRotate: id => fileManager.rotateDocument(id),
     onOrganize: id => openOrganizerForFile(id),
     onMoveUp: id => fileManager.moveUp(id),
@@ -148,6 +150,17 @@ function renderFiles() {
   const stats = fileManager.getTotalStats();
   setMergeEnabled(files.length >= 2 && !stats.hasErrors);
   initialiseSortable();
+}
+
+function handleRangeChange(id, range) {
+  // Silent update in state avoids rebuilding DOM & losing input focus
+  const res = fileManager.setPageRange(id, range, true);
+  if (res) {
+    updateItemRangeFeedback(id, res.error, res.summary);
+  }
+  const stats = fileManager.getTotalStats();
+  updateStatsSummary(stats);
+  setMergeEnabled(fileManager.getFiles().length >= 2 && !stats.hasErrors);
 }
 
 fileManager.onUpdate(() => {
@@ -195,8 +208,9 @@ async function handleIncomingFiles(incoming) {
       const count = await getPdfPageCount(entry.file);
       fileManager.setPageCount(entry.id, count);
     } catch (err) {
-      console.warn(`[PDF Merger] Could not read page count for ${entry.file.name}:`, err);
-      fileManager.setPageCount(entry.id, 1);
+      console.warn(`[PDF Merger] Could not read ${entry.file.name}:`, err);
+      fileManager.setFileError(entry.id, err.message);
+      showMessage(err.message, 'error', 7000);
     }
   }
 }
@@ -230,6 +244,8 @@ function initialiseSortable() {
     sortableMergeList = Sortable.create(fileListEl, {
       animation: 150,
       handle: '.drag-handle',
+      filter: 'input, button, a',
+      preventOnFilter: false,
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
       dragClass: 'sortable-drag',
@@ -515,6 +531,24 @@ splitExecuteBtn.addEventListener('click', async () => {
     splitResultsArea.innerHTML = '';
     splitResultsArea.classList.remove('hidden');
 
+    if (results.length > 1) {
+      const topRow = document.createElement('div');
+      topRow.className = 'split-result-header';
+      topRow.innerHTML = `
+        <span class="file-name"><strong>${results.length} files generated</strong></span>
+        <button id="splitDownloadAllBtn" class="btn btn-primary btn-sm">Download All Files</button>
+      `;
+      topRow.querySelector('#splitDownloadAllBtn')?.addEventListener('click', () => {
+        results.forEach((res, idx) => {
+          setTimeout(() => {
+            const blob = new Blob([res.bytes], { type: 'application/pdf' });
+            downloadBlob(blob, res.name);
+          }, idx * 400);
+        });
+      });
+      splitResultsArea.appendChild(topRow);
+    }
+
     results.forEach(res => {
       const blob = new Blob([res.bytes], { type: 'application/pdf' });
       const item = document.createElement('div');
@@ -530,8 +564,10 @@ splitExecuteBtn.addEventListener('click', async () => {
 
       splitResultsArea.appendChild(item);
 
-      // Also trigger direct download for convenience
-      downloadBlob(blob, res.name);
+      // If only 1 file extracted, download directly
+      if (results.length === 1) {
+        downloadBlob(blob, res.name);
+      }
     });
 
     showMessage(`✓ Successfully created ${results.length} PDF file${results.length === 1 ? '' : 's'}!`, 'success', 6000);
